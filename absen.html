@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Absensi Medis Alternatif</title>
+  <link rel="stylesheet" href="desain.css" />
+  <link rel="icon" href="/DINAS_KESEHATAN_ALTERNATIF.png" type="image/png" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" />
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
+  </style>
+</head>
+<body>
+  <div class="notification-container" id="notificationContainer"></div>
+
+  <div class="container">
+    <!-- Header -->
+    <div class="header">
+      <div class="logo"><i class="fas fa-user-md"></i></div>
+      <h1>Absensi Medis</h1>
+      <p class="subtitle">Sistem Manajemen Kehadiran Personel Medis</p>
+    </div>
+
+    <!-- Form Absensi -->
+    <div class="card fade-in">
+      <h2 class="card-title"><i class="fas fa-clipboard-check"></i> Form Absensi</h2>
+      <form id="absenForm">
+        <div class="form-row">
+          <div class="form-col">
+            <div class="form-group">
+              <input type="text" id="nama" class="form-control" placeholder="Nama Lengkap" required />
+            </div>
+          </div>
+          <div class="form-col">
+            <div class="form-group">
+              <select id="jabatan" class="form-control" required>
+                <option value="" disabled selected>Pilih Posisi/Jabatan</option>
+                <option value="Direktur Utama">Direktur Utama</option>
+                <option value="Wakil Direktur">Wakil Direktur</option>
+                <option value="Kepala Dokter">Kepala Dokter</option>
+                <option value="Dokter Spesialis">Dokter Spesialis</option>
+                <option value="Dokter Bedah">Dokter Bedah</option>
+                <option value="Dokter Umum">Dokter Umum</option>
+                <option value="Senior Perawat">Senior Perawat</option>
+                <option value="Junior Perawat">Junior Perawat</option>
+                <option value="Magang">Magang</option>
+              </select>
+            </div>
+          </div>
+        </div>
+        <div class="btn-row">
+          <button type="button" class="btn btn-success" onclick="mulaiAbsen()">
+            <i class="fas fa-play-circle"></i> Mulai Shift
+          </button>
+          <button type="button" class="btn btn-danger" onclick="akhiriAbsen()">
+            <i class="fas fa-stop-circle"></i> Akhiri Shift
+          </button>
+        </div>
+      </form>
+    </div>
+
+    <!-- Akses Admin -->
+    <div class="card fade-in">
+      <h2 class="card-title"><i class="fas fa-lock"></i> Akses Admin</h2>
+      <div class="form-group">
+        <input type="password" id="adminPass" class="form-control" placeholder="Masukkan Password Admin" />
+      </div>
+      <div class="btn-row">
+        <button type="button" class="btn btn-primary" onclick="aksesAdmin()">
+          <i class="fas fa-history"></i> Lihat Riwayat
+        </button>
+      </div>
+    </div>
+
+    <!-- Dashboard Admin -->
+    <div id="adminArea" class="card fade-in hidden">
+      <div class="admin-header">
+        <h2 class="card-title"><i class="fas fa-chart-bar"></i> Dashboard Admin</h2>
+        <div class="admin-buttons">
+          <button id="resetBtn" class="btn btn-warning" onclick="showConfirmationModal()">
+            <i class="fas fa-trash-alt"></i> Reset Data
+          </button>
+          <button id="exitAdminBtn" class="btn btn-secondary" onclick="keluarAdmin()">
+            <i class="fas fa-sign-out-alt"></i> Keluar
+          </button>
+        </div>
+      </div>
+
+      <div class="stats">
+        <div class="stat-card">
+          <div class="stat-icon blue"><i class="fas fa-users"></i></div>
+          <div class="stat-content">
+            <h3>Total Personel</h3>
+            <p id="totalPersonel">0</p>
+          </div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon green"><i class="fas fa-user-check"></i></div>
+          <div class="stat-content">
+            <h3>Aktif Saat Ini</h3>
+            <p id="aktifPersonel">0</p>
+          </div>
+        </div>
+      </div>
+
+      <input type="text" id="searchInput" class="form-control" placeholder="Cari berdasarkan nama..." />
+      <h3>Riwayat Kehadiran</h3>
+      <table class="attendance-table">
+        <thead>
+          <tr>
+            <th>Nama</th>
+            <th>Jabatan</th>
+            <th>Waktu Mulai</th>
+            <th>Waktu Akhir</th>
+            <th>Durasi</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody id="riwayatTable"></tbody>
+      </table>
+    </div>
+
+    <!-- Modal Konfirmasi Reset -->
+    <div id="confirmationModal" class="modal-overlay hidden">
+      <div class="modal">
+        <div class="modal-header">
+          <h3 class="modal-title">Konfirmasi Reset</h3>
+          <button class="modal-close" onclick="closeConfirmationModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+          Apakah Anda yakin ingin mereset semua data absensi?
+        </div>
+        <div class="modal-actions">
+          <button class="btn btn-danger" onclick="resetData()">Ya, Reset</button>
+          <button class="btn btn-secondary" onclick="closeConfirmationModal()">Batal</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="footer">
+      &copy; 2025 Absensi Medis Alternatif. Dibuat untuk keperluan sistem informasi kehadiran tenaga medis.
+    </div>
+  </div>
+
+  <!-- JavaScript -->
+  <script>
+    let dataAbsen = [];
+    let sedangAktif = {};
+
+    function showNotification(message, type = "success") {
+      const container = document.getElementById("notificationContainer");
+      const notif = document.createElement("div");
+      notif.className = `notification ${type}`;
+      notif.innerText = message;
+      container.appendChild(notif);
+      setTimeout(() => container.removeChild(notif), 3000);
+    }
+
+   function mulaiAbsen() {
+  const nama = document.getElementById("nama").value.trim();
+  const jabatan = document.getElementById("jabatan").value;
+  if (!nama || !jabatan) return showNotification("Isi semua data!", "error");
+
+  const now = new Date();
+  sedangAktif[nama] = {
+    nama,
+    jabatan,
+    waktuMulaiISO: now.toISOString() // simpan waktu asli
+  };
+
+  updateStats();
+  showNotification(`Shift telah dimulai pukul ${now.toLocaleTimeString("id-ID")}`, "success");
+}
+
+
+function akhiriAbsen() {
+  const nama = document.getElementById("nama").value.trim();
+  if (!sedangAktif[nama]) return showNotification("Shift belum dimulai!", "error");
+
+  const now = new Date();
+  const data = sedangAktif[nama];
+
+  const waktuMulai = new Date(data.waktuMulaiISO); // ambil sebagai Date
+  const waktuAkhir = now;
+  const waktuMulaiStr = waktuMulai.toLocaleString("id-ID");
+  const waktuAkhirStr = waktuAkhir.toLocaleString("id-ID");
+
+  const durasiMenit = Math.round((waktuAkhir - waktuMulai) / 60000);
+  const durasi = `${Math.floor(durasiMenit / 60)} jam ${durasiMenit % 60} menit`;
+
+  dataAbsen.push({
+    nama: data.nama,
+    jabatan: data.jabatan,
+    waktuMulai: waktuMulaiStr,
+    waktuAkhir: waktuAkhirStr,
+    durasi,
+    status: "Selesai"
+  });
+
+  delete sedangAktif[nama];
+
+  updateStats();
+  updateRiwayat();
+  showNotification(`Shift telah diakhiri pukul ${waktuAkhir.toLocaleTimeString("id-ID")}`, "success");
+}
+
+
+    function updateStats() {
+      document.getElementById("totalPersonel").textContent = dataAbsen.length;
+      document.getElementById("aktifPersonel").textContent = Object.keys(sedangAktif).length;
+    }
+
+    function updateRiwayat() {
+      const tbody = document.getElementById("riwayatTable");
+      tbody.innerHTML = "";
+      dataAbsen.forEach(item => {
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td>${item.nama}</td>
+          <td>${item.jabatan}</td>
+          <td>${item.waktuMulai}</td>
+          <td>${item.waktuAkhir}</td>
+          <td>${item.durasi}</td>
+          <td><span class="badge success">${item.status}</span></td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    function aksesAdmin() {
+      const inputPass = document.getElementById("adminPass").value;
+      if (inputPass === "medisalter") {
+        document.getElementById("adminArea").classList.remove("hidden");
+        showNotification("Akses Admin Dibuka", "success");
+      } else {
+        showNotification("Password salah!", "error");
+      }
+    }
+
+    function keluarAdmin() {
+      document.getElementById("adminArea").classList.add("hidden");
+    }
+
+    function showConfirmationModal() {
+      document.getElementById("confirmationModal").classList.remove("hidden");
+    }
+
+    function closeConfirmationModal() {
+      document.getElementById("confirmationModal").classList.add("hidden");
+    }
+
+    function resetData() {
+      dataAbsen = [];
+      sedangAktif = {};
+      updateStats();
+      updateRiwayat();
+      closeConfirmationModal();
+      showNotification("Data berhasil direset", "success");
+    }
+  </script>
+</body>
+</html>
